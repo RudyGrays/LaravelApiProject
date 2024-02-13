@@ -9,7 +9,7 @@ class UserFile extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'file_name', 'file_id'];
+    protected $fillable = ['user_id', 'file_name', 'file_id', 'file_path'];
 
     public function user()
     {

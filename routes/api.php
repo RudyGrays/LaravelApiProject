@@ -17,5 +17,9 @@ Route::post('logout', [AuthController::class, 'logout'])->middleware('auth:sanct
 
 
 Route::post('files', [FileUploadController::class, 'uploadFiles'])->middleware('auth:sanctum');
-Route::post('files/{id}', [FileUploadController::class, 'updateFile'])->middleware('auth:sanctum');
-Route::delete('files/{id}', [FileUploadController::class, 'deleteFile'])->middleware('auth:sanctum');
+Route::get('files/{file_id}', [FileUploadController::class, 'getFile'])->middleware('auth:sanctum');
+Route::post('files/{file_id}', [FileUploadController::class, 'updateFile'])->middleware('auth:sanctum');
+Route::delete('files/{file_id}', [FileUploadController::class, 'deleteFile'])->middleware('auth:sanctum');
+
+
+Route::post('files/{file_id}/accesses', [FileUploadController::class, 'addAccessToFile'])->middleware('auth:sanctum');

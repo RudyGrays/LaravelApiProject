@@ -15,7 +15,8 @@ return new class extends Migration
             $table->id();
             $table->string('user_id');
             $table->string('file_name'); 
-            $table->string('file_id')->unique();
+            $table->string('file_id');
+            $table->string('file_path');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade'); 
             $table->timestamps();
         });

@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\UserFile;
 use App\Models\User;
+use App\Models\Access;
 use Faker\Core\File;
+use Illuminate\Support\Facades\Storage;
 
 class FileUploadController extends Controller
 {
@@ -58,7 +60,7 @@ class FileUploadController extends Controller
                 $newFileName = $fileName;
             }
 
-            $url = 'http://127.0.0.1:8000/api/files/' . $fileId;
+            $url = 'http://127.0.0.1:8000/api/' . $fileId;
             $uploadedFiles[] = [
                 'success'=> true,
                 'message'=> 'Success',
@@ -66,15 +68,22 @@ class FileUploadController extends Controller
                 'url'=> $url,
                 'file_id' => $fileId
             ];
-            
+
+            $filePath = Storage::disk('public')->put('files', $file);
+
             $userFile = new UserFile();
             $userFile->user_id =  auth()->user()->id; 
             $userFile->file_name = $newFileName;
             $userFile->file_id = $fileId;
+            $userFile->file_path = $filePath;
             $userFile->save();
 
-            
-            $file->storeAs('uploads', $fileId . '.' . $extension); 
+            $connection = Access::create([
+                'file_id' => $fileId,
+                'user_id' => auth()->user()->id,
+                'type'=> 'author'
+            ]);
+
         }
 
         return response()->json($uploadedFiles);
@@ -86,9 +95,9 @@ class FileUploadController extends Controller
         return $baseName . '(' . $count . ').' . $extension;
     }
 
-    public function updateFile(Request $request, $id)
+    public function updateFile(Request $request, $file_id)
     {   
-        $file = UserFile::where('file_id', $id)->first();
+        $file = UserFile::where('file_id', $file_id)->first();
         
         if(!$file ) return response(['success'=> false, 'message'=> 'File doe\'s not exist']);
 
@@ -99,16 +108,49 @@ class FileUploadController extends Controller
         return response()->json(['success'=> true, 'message'=> 'renamed']);
     }
 
-    public function deleteFile($id)
+    public function deleteFile($file_id)
     {   
-        $file = UserFile::where('file_id', $id)->first();
-        
-        if(!$file ) return response(['success'=> false, 'message'=> 'File doe\'s not exist']);
+        $file = UserFile::where('file_id', $file_id)->first();
+       
+        if(!isset($file)) return response(['success'=> false, 'message'=> 'File doe\'s not exist']);
 
-        
-        
         $file->delete();
 
         return response()->json(['success'=> true, 'message'=> 'file deleted']);
+    }
+
+    public function getFile($file_id)
+    {   
+        $file = UserFile::where('file_id', $file_id)->first();
+        
+        if(!isset($file)) return response(['success'=> false, 'message'=> 'File doe\'s not exist']);
+
+        $fileName = $file->file_path;
+        
+        return Storage::download($fileName, $file->file_name);
+        
+    }
+
+
+    public function addAccessToFile(Request $request, $file_id)
+    {   
+        $currentUser = auth()->user();
+        $forUser = User::where('Email', $request->email)->first();
+        $file = UserFile::where('file_id', $file_id)->first();
+        if(!$file || !$forUser || $currentUser->id != $file->user_id) return response(['success'=> false, 'message'=> 'Access denied']);
+
+        $fileId = $file->file_id;
+
+        if(Access::where('file_id' == $fileId, 'user_id' == $forUser['id'])) return response(['success'=> false, 'message'=> 'Access is already available']);
+
+        $connection = Access::create([
+            'file_id' => $fileId,
+            'user_id' => $forUser['id'],
+            'type'=> 'co-author'
+        ]);
+        
+        $response = Access::getUsersWithAccessToFile($fileId);
+
+        return response()->json($response);
     }
 }
